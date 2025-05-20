@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:8.0.400 AS build
 WORKDIR /src
 
 # コピー元のファイルが存在することを確認
@@ -21,7 +21,7 @@ FROM build AS publish
 RUN dotnet publish "src/MicrosoftGraphCSharpe.ConsoleApp/MicrosoftGraphCSharpe.ConsoleApp.csproj" -c Release -o /app/publish
 
 # 最終イメージ
-FROM mcr.microsoft.com/dotnet/runtime:9.0 AS final
+FROM mcr.microsoft.com/dotnet/runtime:8.0.400 AS final
 WORKDIR /app
 
 # 発行したアプリケーションをコピー

@@ -69,7 +69,7 @@ namespace MicrosoftGraphCSharpe.Tests
             var configWithMissingTenantId = new Mock<IConfiguration>();
             configWithMissingTenantId.Setup(c => c["GraphApi:ClientId"]).Returns("test_client_id");
             configWithMissingTenantId.Setup(c => c["GraphApi:ClientSecret"]).Returns("test_client_secret");
-            configWithMissingTenantId.Setup(c => c["GraphApi:TenantId"]).Returns((string)null);
+            configWithMissingTenantId.Setup(c => c["GraphApi:TenantId"]).Returns(null as string);
             
             var authService = new GraphAuthService(configWithMissingTenantId.Object);
 
