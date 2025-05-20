@@ -1,0 +1,9 @@
+{
+  "GraphApi": {
+    "ClientId": "YOUR_CLIENT_ID",
+    "ClientSecret": "YOUR_CLIENT_SECRET",
+    "TenantId": "YOUR_TENANT_ID",
+    "TargetTeamId": "", // Optional: Specify a team ID to target
+    "TargetChannelId": "" // Optional: Specify a channel ID to target
+  }
+}
