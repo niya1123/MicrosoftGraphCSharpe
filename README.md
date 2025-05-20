@@ -1,0 +1,2 @@
+# MicrosoftGraphCSharpe
+MicorsoftGraphを使ってC#でTeamsを操作するサンプル
