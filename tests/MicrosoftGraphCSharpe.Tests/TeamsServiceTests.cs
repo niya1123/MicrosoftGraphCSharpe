@@ -8,130 +8,131 @@ using System.Collections.Generic;
 
 namespace MicrosoftGraphCSharpe.Tests
 {
+    /// <summary>
+    /// TeamsServiceのテストクラス
+    /// Teams操作サービスの機能を検証するためのユニットテスト
+    /// </summary>
     [TestClass]
     public class TeamsServiceTests
     {
-        private Mock<GraphServiceClient> _mockGraphServiceClient = null!;
+        private Mock<IGraphClientWrapper> _mockGraphClient = null!;
         private Mock<IConfiguration> _mockConfiguration = null!;
         private TeamsService _teamsService = null!;
 
+        /// <summary>
+        /// 各テスト実行前の初期化処理
+        /// </summary>
         [TestInitialize]
         public void Setup()
         {
-            _mockGraphServiceClient = new Mock<GraphServiceClient>(MockBehavior.Strict, null, null, null);
+            _mockGraphClient = new Mock<IGraphClientWrapper>();
             _mockConfiguration = new Mock<IConfiguration>();
             
-            // Setup mock configuration with UseLocalMockData = false to use real API calls in tests
-            _mockConfiguration.Setup(c => c.GetValue<bool>("UseLocalMockData", false)).Returns(false);
+            // 設定値はあまり重要でないので基本的な設定だけ
+            _mockConfiguration.Setup(c => c["UseLocalMockData"]).Returns("false");
             
-            _teamsService = new TeamsService(_mockGraphServiceClient.Object, _mockConfiguration.Object);
+            // テスト用に明示的にモックデータを使わないよう指定（第3引数でfalseを指定）
+            _teamsService = new TeamsService(_mockGraphClient.Object, _mockConfiguration.Object, false);
         }
 
+        /// <summary>
+        /// チームの一覧を正しく取得できることを確認するテスト
+        /// </summary>
         [TestMethod]
         public async Task ListMyTeamsAsync_ReturnsTeams()
         {
-            // Arrange
-            var teamCollectionResponse = new TeamCollectionResponse
+            // 準備 (Arrange)
+            var teams = new List<Team>
             {
-                Value = new List<Team>
-                {
-                    new Team { Id = "team1", DisplayName = "Team 1" },
-                    new Team { Id = "team2", DisplayName = "Team 2" }
-                }
+                new Team { Id = "team1", DisplayName = "Team 1" },
+                new Team { Id = "team2", DisplayName = "Team 2" }
             };
 
-            // Update to use Teams endpoint instead of Me.JoinedTeams
-            _mockGraphServiceClient.Setup(g => g.Teams.GetAsync(
-                    It.IsAny<Action<Microsoft.Kiota.Abstractions.RequestConfiguration<Microsoft.Graph.Teams.TeamsRequestBuilder.TeamsRequestBuilderGetQueryParameters>>>(),
-                    It.IsAny<CancellationToken>()))
-                .ReturnsAsync(teamCollectionResponse);
+            // GraphClientWrapperのモックを設定
+            _mockGraphClient.Setup(g => g.GetMyTeamsAsync())
+                .ReturnsAsync(teams);
 
-            // Act
+            // 実行 (Act)
             var result = await _teamsService.ListMyTeamsAsync();
 
-            // Assert
+            // 検証 (Assert)
             Assert.IsNotNull(result);
             Assert.AreEqual(2, result!.Count);
             Assert.AreEqual("Team 1", result[0].DisplayName);
         }
 
+        /// <summary>
+        /// チャンネルの一覧を正しく取得できることを確認するテスト
+        /// </summary>
         [TestMethod]
         public async Task ListChannelsAsync_ReturnsChannels()
         {
-            // Arrange
+            // 準備 (Arrange)
             var teamId = "test-team-id";
-            var channelCollectionResponse = new ChannelCollectionResponse
+            var channels = new List<Channel>
             {
-                Value = new List<Channel>
-                {
-                    new Channel { Id = "channel1", DisplayName = "Channel 1" },
-                    new Channel { Id = "channel2", DisplayName = "Channel 2" }
-                }
+                new Channel { Id = "channel1", DisplayName = "Channel 1" },
+                new Channel { Id = "channel2", DisplayName = "Channel 2" }
             };
 
-            _mockGraphServiceClient.Setup(g => g.Teams[teamId].Channels.GetAsync(
-                    It.IsAny<Action<Microsoft.Kiota.Abstractions.RequestConfiguration<Microsoft.Graph.Teams.Item.Channels.ChannelsRequestBuilder.ChannelsRequestBuilderGetQueryParameters>>>(),
-                    It.IsAny<CancellationToken>()))
-                .ReturnsAsync(channelCollectionResponse);
+            _mockGraphClient.Setup(g => g.GetTeamChannelsAsync(teamId))
+                .ReturnsAsync(channels);
 
-            // Act
+            // 実行 (Act)
             var result = await _teamsService.ListChannelsAsync(teamId);
 
-            // Assert
+            // 検証 (Assert)
             Assert.IsNotNull(result);
             Assert.AreEqual(2, result!.Count);
             Assert.AreEqual("Channel 1", result[0].DisplayName);
         }
 
+        /// <summary>
+        /// チャンネルへのメッセージ送信が正しく動作することを確認するテスト
+        /// </summary>
         [TestMethod]
         public async Task SendMessageToChannelAsync_ReturnsSentMessage()
         {
-            // Arrange
+            // 準備 (Arrange)
             var teamId = "test-team-id";
             var channelId = "test-channel-id";
             var messageContent = "Hello World";
-            var chatMessage = new ChatMessage { Body = new ItemBody { Content = messageContent } };
             var sentChatMessage = new ChatMessage { Id = "message-id", Body = new ItemBody { Content = messageContent } };
 
-            _mockGraphServiceClient.Setup(g => g.Teams[teamId].Channels[channelId].Messages.PostAsync(
-                    It.IsAny<ChatMessage>(),
-                    It.IsAny<Action<Microsoft.Kiota.Abstractions.RequestConfiguration<Microsoft.Kiota.Abstractions.DefaultQueryParameters>>>(),
-                    It.IsAny<CancellationToken>()))
+            _mockGraphClient.Setup(g => g.SendMessageToChannelAsync(teamId, channelId, messageContent))
                 .ReturnsAsync(sentChatMessage);
 
-            // Act
+            // 実行 (Act)
             var result = await _teamsService.SendMessageToChannelAsync(teamId, channelId, messageContent);
 
-            // Assert
+            // 検証 (Assert)
             Assert.IsNotNull(result);
             Assert.AreEqual("message-id", result!.Id);
             Assert.AreEqual(messageContent, result.Body!.Content);
         }
 
+        /// <summary>
+        /// チャンネルのメッセージ一覧を正しく取得できることを確認するテスト
+        /// </summary>
         [TestMethod]
         public async Task ListChannelMessagesAsync_ReturnsMessages()
         {
-            // Arrange
+            // 準備 (Arrange)
             var teamId = "test-team-id";
             var channelId = "test-channel-id";
-            var chatMessageCollectionResponse = new ChatMessageCollectionResponse
+            var messages = new List<ChatMessage>
             {
-                Value = new List<ChatMessage>
-                {
-                    new ChatMessage { Id = "msg1", Body = new ItemBody { Content = "Message 1" } },
-                    new ChatMessage { Id = "msg2", Body = new ItemBody { Content = "Message 2" } }
-                }
+                new ChatMessage { Id = "msg1", Body = new ItemBody { Content = "Message 1" } },
+                new ChatMessage { Id = "msg2", Body = new ItemBody { Content = "Message 2" } }
             };
 
-            _mockGraphServiceClient.Setup(g => g.Teams[teamId].Channels[channelId].Messages.GetAsync(
-                    It.IsAny<Action<Microsoft.Kiota.Abstractions.RequestConfiguration<Microsoft.Graph.Teams.Item.Channels.Item.Messages.MessagesRequestBuilder.MessagesRequestBuilderGetQueryParameters>>>(),
-                    It.IsAny<CancellationToken>()))
-                .ReturnsAsync(chatMessageCollectionResponse);
+            _mockGraphClient.Setup(g => g.GetChannelMessagesAsync(teamId, channelId))
+                .ReturnsAsync(messages);
 
-            // Act
+            // 実行 (Act)
             var result = await _teamsService.ListChannelMessagesAsync(teamId, channelId);
 
-            // Assert
+            // 検証 (Assert)
             Assert.IsNotNull(result);
             Assert.AreEqual(2, result!.Count);
             Assert.AreEqual("Message 1", result[0].Body!.Content);

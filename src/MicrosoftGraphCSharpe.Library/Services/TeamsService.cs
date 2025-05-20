@@ -2,40 +2,95 @@ using Microsoft.Graph;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using Microsoft.Graph.Models;
-using System.Linq; // Required for .Select()
+using System.Linq; // .Select()に必要
 using System;
 using Microsoft.Extensions.Configuration;
 using MicrosoftGraphCSharpe.Library.Models;
 
 namespace MicrosoftGraphCSharpe.Library.Services
 {
+    /// <summary>
+    /// TeamsService - Microsoft Teams操作サービス
+    /// Microsoft Graph APIを使用してTeamsの操作（チームの一覧取得、チャンネルの操作、メッセージの送受信）を行います。
+    /// モックデータを使用したローカルテスト機能も備えています。
+    /// </summary>
     public class TeamsService
     {
-        private readonly GraphServiceClient _graphServiceClient;
+        private readonly IGraphClientWrapper _graphClient;
         private readonly IConfiguration _configuration;
         private readonly bool _useLocalMockData;
         private readonly SampleDataConfig _sampleData;
 
-        public TeamsService(GraphServiceClient graphServiceClient, IConfiguration configuration)
+        /// <summary>
+        /// コンストラクタ
+        /// </summary>
+        /// <param name="graphClient">GraphServiceClientのラッパー</param>
+        /// <param name="configuration">設定情報を提供するIConfigurationインスタンス</param>
+        /// <param name="useLocalMockData">モックデータを使用するかどうか（テスト用）</param>
+        /// <exception cref="ArgumentNullException">引数がnullの場合にスローされます</exception>
+        public TeamsService(IGraphClientWrapper graphClient, IConfiguration configuration, bool? useLocalMockDataOverride = null)
         {
-            _graphServiceClient = graphServiceClient ?? throw new ArgumentNullException(nameof(graphServiceClient));
+            _graphClient = graphClient ?? throw new ArgumentNullException(nameof(graphClient));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             
-            _useLocalMockData = _configuration.GetValue<bool>("UseLocalMockData", false);
+            // テスト用に直接設定できるようにする
+            if (useLocalMockDataOverride.HasValue)
+            {
+                _useLocalMockData = useLocalMockDataOverride.Value;
+            }
+            else
+            {
+                // 通常の設定読み込み処理
+                try
+                {
+                    _useLocalMockData = _configuration.GetValue<bool>("UseLocalMockData", false);
+                }
+                catch (Exception)
+                {
+                    // IConfigurationからの読み込みに失敗した場合はデフォルト値を使用
+                    _useLocalMockData = false;
+                }
+            }
+            
             if (_useLocalMockData)
             {
-                _sampleData = _configuration.GetSection("SampleData").Get<SampleDataConfig>();
-                Console.WriteLine("Using local mock data for Teams API testing.");
+                try
+                {
+                    _sampleData = _configuration.GetSection("SampleData").Get<SampleDataConfig>() ?? new SampleDataConfig();
+                    Console.WriteLine("Teams APIテストのためにローカルのモックデータを使用します。");
+                }
+                catch (Exception)
+                {
+                    // サンプルデータの読み込みに失敗した場合は空のオブジェクトを使用
+                    _sampleData = new SampleDataConfig();
+                }
             }
         }
+        
+        /// <summary>
+        /// コンストラクタ（GraphServiceClient用）
+        /// </summary>
+        /// <param name="graphServiceClient">認証済みのGraphServiceClientインスタンス</param>
+        /// <param name="configuration">設定情報を提供するIConfigurationインスタンス</param>
+        /// <param name="useLocalMockData">モックデータを使用するかどうか（テスト用）</param>
+        /// <exception cref="ArgumentNullException">引数がnullの場合にスローされます</exception>
+        public TeamsService(GraphServiceClient graphServiceClient, IConfiguration configuration, bool? useLocalMockDataOverride = null)
+            : this(new GraphClientWrapper(graphServiceClient), configuration, useLocalMockDataOverride)
+        {
+        }
 
+        /// <summary>
+        /// アクセス可能なTeamsの一覧を取得します
+        /// </summary>
+        /// <returns>Teamオブジェクトのリスト</returns>
         public async Task<List<Team>?> ListMyTeamsAsync()
         {
-            Console.WriteLine("\n--- Listing All Accessible Teams ---");
+            Console.WriteLine("\n--- アクセス可能なTeamsの一覧を取得します ---");
             
+            // モックデータを使用する場合
             if (_useLocalMockData && _sampleData?.Teams != null)
             {
-                Console.WriteLine("Using sample data for teams instead of API call.");
+                Console.WriteLine("API呼び出しの代わりにサンプルデータを使用します。");
                 var teams = _sampleData.Teams.Select(t => new Team
                 {
                     Id = t.Id,
@@ -45,57 +100,61 @@ namespace MicrosoftGraphCSharpe.Library.Services
 
                 foreach (var team in teams)
                 {
-                    Console.WriteLine($"Team ID: {team.Id}, Name: {team.DisplayName}, Description: {team.Description ?? "N/A"}");
+                    Console.WriteLine($"Team ID: {team.Id}, 名前: {team.DisplayName}, 説明: {team.Description ?? "なし"}");
                 }
 
                 return teams;
             }
             
+            // 実際のAPI呼び出しを行う場合
             try
             {
-                // For application permissions, use /teams endpoint instead of /me/joinedTeams
-                // This requires Team.ReadBasic.All or Team.ReadAll application permission
-                Console.WriteLine("Fetching teams using application permissions...");
-                var teamsResponse = await _graphServiceClient.Teams.GetAsync((requestConfiguration) =>
-                {
-                    requestConfiguration.QueryParameters.Select = new string[] { "id", "displayName", "description" };
-                });
+                // アプリケーション権限（クライアント資格情報フロー）を使用する場合は/teamsエンドポイントを使用
+                // Team.ReadBasic.AllまたはTeam.ReadAllアプリケーション権限が必要です
+                Console.WriteLine("アプリケーション権限を使用してteamsを取得します...");
+                var teams = await _graphClient.GetMyTeamsAsync();
 
-                if (teamsResponse?.Value != null && teamsResponse.Value.Any())
+                if (teams != null && teams.Any())
                 {
-                    foreach (var team in teamsResponse.Value)
+                    foreach (var team in teams)
                     {
-                        Console.WriteLine($"Team ID: {team.Id}, Name: {team.DisplayName}, Description: {team.Description ?? "N/A"}");
+                        Console.WriteLine($"Team ID: {team.Id}, 名前: {team.DisplayName}, 説明: {team.Description ?? "なし"}");
                     }
-                    return teamsResponse.Value;
+                    return teams;
                 }
                 else
                 {
-                    Console.WriteLine("No teams found or accessible by the application. Make sure the app has Team.ReadBasic.All or Team.ReadAll permission.");
+                    Console.WriteLine("Teamsが見つからないか、アプリケーションからアクセスできません。アプリにTeam.ReadBasic.AllまたはTeam.ReadAll権限があることを確認してください。");
                     return new List<Team>();
                 }
             }
             catch (Exception ex)
             {
-                // Log detailed error including the stack trace for easier debugging
-                Console.WriteLine($"Error listing teams: {ex.Message}");
-                Console.WriteLine($"Error details: {ex}");
+                // より詳細なデバッグのためにスタックトレースを含むエラー情報をログに記録
+                Console.WriteLine($"Teamsの一覧取得エラー: {ex.Message}");
+                Console.WriteLine($"エラー詳細: {ex}");
                 return null;
             }
         }
 
+        /// <summary>
+        /// 指定されたチームのチャンネル一覧を取得します
+        /// </summary>
+        /// <param name="teamId">チームID</param>
+        /// <returns>Channelオブジェクトのリスト</returns>
         public async Task<List<Channel>?> ListChannelsAsync(string teamId)
         {
-            Console.WriteLine($"\n--- Listing Channels for Team ID: {teamId} ---");
+            Console.WriteLine($"\n--- チームID: {teamId} のチャンネル一覧を取得します ---");
             if (string.IsNullOrEmpty(teamId))
             {
-                Console.WriteLine("Team ID cannot be empty.");
+                Console.WriteLine("チームIDが空です。");
                 return null;
             }
             
+            // モックデータを使用する場合
             if (_useLocalMockData && _sampleData?.Channels != null)
             {
-                Console.WriteLine("Using sample data for channels instead of API call.");
+                Console.WriteLine("API呼び出しの代わりにサンプルデータを使用します。");
                 if (_sampleData.Channels.TryGetValue(teamId, out var sampleChannels))
                 {
                     var channels = sampleChannels.Select(c => new Channel
@@ -107,61 +166,67 @@ namespace MicrosoftGraphCSharpe.Library.Services
 
                     foreach (var channel in channels)
                     {
-                        Console.WriteLine($"Channel ID: {channel.Id}, Name: {channel.DisplayName}, Description: {channel.Description ?? "N/A"}");
+                        Console.WriteLine($"チャンネルID: {channel.Id}, 名前: {channel.DisplayName}, 説明: {channel.Description ?? "なし"}");
                     }
 
                     return channels;
                 }
                 else
                 {
-                    Console.WriteLine($"No sample channels found for team ID {teamId}");
+                    Console.WriteLine($"チームID {teamId} に対するサンプルチャンネルが見つかりません");
                     return new List<Channel>();
                 }
             }
             
+            // 実際のAPI呼び出しを行う場合
             try
             {
-                var channels = await _graphServiceClient.Teams[teamId].Channels.GetAsync((requestConfiguration) =>
-                {
-                    requestConfiguration.QueryParameters.Select = new string[] { "id", "displayName", "description" };
-                });
+                var channels = await _graphClient.GetTeamChannelsAsync(teamId);
 
-                if (channels?.Value != null && channels.Value.Any())
+                if (channels != null && channels.Any())
                 {
-                    foreach (var channel in channels.Value)
+                    foreach (var channel in channels)
                     {
-                        Console.WriteLine($"Channel ID: {channel.Id}, Name: {channel.DisplayName}, Description: {channel.Description ?? "N/A"}");
+                        Console.WriteLine($"チャンネルID: {channel.Id}, 名前: {channel.DisplayName}, 説明: {channel.Description ?? "なし"}");
                     }
-                    return channels.Value;
+                    return channels;
                 }
                 else
                 {
-                    Console.WriteLine("No channels found in this team.");
+                    Console.WriteLine("このチームにチャンネルが見つかりません。");
                     return new List<Channel>();
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error listing channels for team {teamId}: {ex.Message}");
-                Console.WriteLine($"Error details: {ex}");
+                Console.WriteLine($"チームID {teamId} のチャンネル一覧取得エラー: {ex.Message}");
+                Console.WriteLine($"エラー詳細: {ex}");
                 return null;
             }
         }
 
+        /// <summary>
+        /// 指定されたチャンネルにメッセージを送信します
+        /// </summary>
+        /// <param name="teamId">チームID</param>
+        /// <param name="channelId">チャンネルID</param>
+        /// <param name="messageContent">送信するメッセージの内容</param>
+        /// <returns>送信されたメッセージ情報</returns>
         public async Task<ChatMessage?> SendMessageToChannelAsync(string teamId, string channelId, string messageContent)
         {
-            Console.WriteLine($"\n--- Sending Message to Team ID: {teamId}, Channel ID: {channelId} ---");
+            Console.WriteLine($"\n--- チームID: {teamId}, チャンネルID: {channelId} にメッセージを送信します ---");
             if (string.IsNullOrEmpty(teamId) || string.IsNullOrEmpty(channelId) || string.IsNullOrEmpty(messageContent))
             {
-                Console.WriteLine("Team ID, Channel ID, and Message Content cannot be empty.");
+                Console.WriteLine("チームID、チャンネルID、およびメッセージ内容は空にできません。");
                 return null;
             }
             
+            // モックデータを使用する場合
             if (_useLocalMockData)
             {
-                Console.WriteLine("Using mock implementation for sending message.");
+                Console.WriteLine("メッセージ送信のモック実装を使用します。");
                 var messageId = Guid.NewGuid().ToString();
-                Console.WriteLine($"Message sent successfully (mock). ID: {messageId}");
+                Console.WriteLine($"メッセージが正常に送信されました（モック）。ID: {messageId}");
                 
                 return new ChatMessage
                 {
@@ -169,46 +234,46 @@ namespace MicrosoftGraphCSharpe.Library.Services
                     Body = new ItemBody { Content = messageContent, ContentType = BodyType.Html },
                     From = new ChatMessageFromIdentitySet 
                     { 
-                        User = new Identity { DisplayName = "Mock User" } 
+                        User = new Identity { DisplayName = "モックユーザー" } 
                     }
                 };
             }
             
+            // 実際のAPI呼び出しを行う場合
             try
             {
-                var requestBody = new ChatMessage
-                {
-                    Body = new ItemBody
-                    {
-                        ContentType = BodyType.Html,
-                        Content = messageContent
-                    }
-                };
-
-                var sentMessage = await _graphServiceClient.Teams[teamId].Channels[channelId].Messages.PostAsync(requestBody);
-                Console.WriteLine($"Message sent successfully. ID: {sentMessage?.Id}");
+                var sentMessage = await _graphClient.SendMessageToChannelAsync(teamId, channelId, messageContent);
+                Console.WriteLine($"メッセージが正常に送信されました。ID: {sentMessage?.Id}");
                 return sentMessage;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error sending message: {ex.Message}");
-                Console.WriteLine($"Error details: {ex}");
+                Console.WriteLine($"メッセージ送信エラー: {ex.Message}");
+                Console.WriteLine($"エラー詳細: {ex}");
                 return null;
             }
         }
 
+        /// <summary>
+        /// 指定されたチャンネルのメッセージ一覧を取得します
+        /// </summary>
+        /// <param name="teamId">チームID</param>
+        /// <param name="channelId">チャンネルID</param>
+        /// <param name="top">取得するメッセージの最大数</param>
+        /// <returns>ChatMessageオブジェクトのリスト</returns>
         public async Task<List<ChatMessage>?> ListChannelMessagesAsync(string teamId, string channelId, int top = 10)
         {
-            Console.WriteLine($"\n--- Listing Last {top} Messages for Team ID: {teamId}, Channel ID: {channelId} ---");
+            Console.WriteLine($"\n--- チームID: {teamId}, チャンネルID: {channelId} の最新{top}件のメッセージを取得します ---");
             if (string.IsNullOrEmpty(teamId) || string.IsNullOrEmpty(channelId))
             {
-                Console.WriteLine("Team ID and Channel ID cannot be empty.");
+                Console.WriteLine("チームIDとチャンネルIDは空にできません。");
                 return null;
             }
             
+            // モックデータを使用する場合
             if (_useLocalMockData && _sampleData?.Messages != null)
             {
-                Console.WriteLine("Using sample data for messages instead of API call.");
+                Console.WriteLine("API呼び出しの代わりにサンプルデータを使用します。");
                 var key = $"{teamId}|{channelId}";
                 if (_sampleData.Messages.TryGetValue(key, out var sampleMessages))
                 {
@@ -224,45 +289,41 @@ namespace MicrosoftGraphCSharpe.Library.Services
 
                     foreach (var message in messages)
                     {
-                        Console.WriteLine($"Message ID: {message.Id}, From: {message.From?.User?.DisplayName ?? "N/A"}, Content: {message.Body?.Content}");
+                        Console.WriteLine($"メッセージID: {message.Id}, 送信者: {message.From?.User?.DisplayName ?? "不明"}, 内容: {message.Body?.Content}");
                     }
 
                     return messages;
                 }
                 else
                 {
-                    Console.WriteLine($"No sample messages found for team ID {teamId} and channel ID {channelId}");
+                    Console.WriteLine($"チームID {teamId} とチャンネルID {channelId} に対するサンプルメッセージが見つかりません");
                     return new List<ChatMessage>();
                 }
             }
             
+            // 実際のAPI呼び出しを行う場合
             try
             {
-                var messages = await _graphServiceClient.Teams[teamId].Channels[channelId].Messages.GetAsync((requestConfiguration) =>
-                {
-                    requestConfiguration.QueryParameters.Top = top;
-                    requestConfiguration.QueryParameters.Orderby = new string[] { "lastModifiedDateTime desc" }; // Get the latest messages
-                    requestConfiguration.QueryParameters.Select = new string[] { "id", "body", "from", "createdDateTime", "lastModifiedDateTime" };
-                });
+                var messages = await _graphClient.GetChannelMessagesAsync(teamId, channelId);
 
-                if (messages?.Value != null && messages.Value.Any())
+                if (messages != null && messages.Any())
                 {
-                    foreach (var message in messages.Value)
+                    foreach (var message in messages)
                     {
-                        Console.WriteLine($"Message ID: {message.Id}, From: {message.From?.User?.DisplayName ?? "N/A"}, Content: {message.Body?.Content}, Created: {message.CreatedDateTime}");
+                        Console.WriteLine($"メッセージID: {message.Id}, 送信者: {message.From?.User?.DisplayName ?? "不明"}, 内容: {message.Body?.Content}, 作成日時: {message.CreatedDateTime}");
                     }
-                    return messages.Value;
+                    return messages;
                 }
                 else
                 {
-                    Console.WriteLine("No messages found in this channel.");
+                    Console.WriteLine("このチャンネルにメッセージが見つかりません。");
                     return new List<ChatMessage>();
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error listing messages for channel {channelId}: {ex.Message}");
-                Console.WriteLine($"Error details: {ex}");
+                Console.WriteLine($"チャンネルID {channelId} のメッセージ一覧取得エラー: {ex.Message}");
+                Console.WriteLine($"エラー詳細: {ex}");
                 return null;
             }
         }
