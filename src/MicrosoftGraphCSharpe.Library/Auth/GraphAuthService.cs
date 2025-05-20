@@ -13,7 +13,7 @@ namespace MicrosoftGraphCSharpe.Library.Auth
     {
         private readonly IConfiguration _configuration;
         private readonly bool _isTestMode;
-        private readonly GraphServiceClient _testClient;
+        private readonly GraphServiceClient? _testClient;
 
         /// <summary>
         /// コンストラクタ
@@ -47,7 +47,7 @@ namespace MicrosoftGraphCSharpe.Library.Auth
             // テストモードの場合、事前に設定されたクライアントを返す
             if (_isTestMode)
             {
-                return _testClient;
+                return _testClient ?? throw new InvalidOperationException("テストクライアントが設定されていません");
             }
             
             var clientId = _configuration["GraphApi:ClientId"];

@@ -15,7 +15,7 @@ Microsoft Graph APIを使用してC#でTeamsを操作するサンプルアプリ
 
 ## 必要な環境
 
-- [.NET 9.0 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
+- [.NET 8.0.400 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 - Visual Studio 2022、Visual Studio Code、またはその他の.NET開発環境
 - Azure Active Directory テナント
 - Microsoft Teamsが有効化されたテナント
@@ -85,6 +85,15 @@ dotnet run --project src/MicrosoftGraphCSharpe.ConsoleApp
 # テストの実行
 dotnet test
 ```
+
+## コード品質と改善点
+
+このプロジェクトでは、以下のコード品質向上の取り組みを行っています：
+
+- Nullableリファレンス型の警告（CS8603）の解消
+- メソッドの戻り値に対する適切なnull処理（空リストの返却）
+- 堅牢なエラーハンドリングと例外の適切なスロー
+- コードの一貫性と可読性の向上
 
 ## Docker環境での実行
 

@@ -63,7 +63,8 @@ namespace MicrosoftGraphCSharpe.Library.Services
                 }
             };
             
-            return await _graphClient.Teams[teamId].Channels[channelId].Messages.PostAsync(chatMessage);
+            var result = await _graphClient.Teams[teamId].Channels[channelId].Messages.PostAsync(chatMessage);
+            return result ?? throw new Exception("メッセージの送信に失敗しました");
         }
     }
 }

@@ -19,7 +19,7 @@ namespace MicrosoftGraphCSharpe.Library.Services
         private readonly IGraphClientWrapper _graphClient;
         private readonly IConfiguration _configuration;
         private readonly bool _useLocalMockData;
-        private readonly SampleDataConfig _sampleData;
+        private readonly SampleDataConfig? _sampleData;
 
         /// <summary>
         /// コンストラクタ
@@ -83,7 +83,7 @@ namespace MicrosoftGraphCSharpe.Library.Services
         /// アクセス可能なTeamsの一覧を取得します
         /// </summary>
         /// <returns>Teamオブジェクトのリスト</returns>
-        public async Task<List<Team>?> ListMyTeamsAsync()
+        public async Task<List<Team>> ListMyTeamsAsync()
         {
             Console.WriteLine("\n--- アクセス可能なTeamsの一覧を取得します ---");
             
@@ -133,7 +133,7 @@ namespace MicrosoftGraphCSharpe.Library.Services
                 // より詳細なデバッグのためにスタックトレースを含むエラー情報をログに記録
                 Console.WriteLine($"Teamsの一覧取得エラー: {ex.Message}");
                 Console.WriteLine($"エラー詳細: {ex}");
-                return null;
+                return new List<Team>();
             }
         }
 
@@ -142,13 +142,13 @@ namespace MicrosoftGraphCSharpe.Library.Services
         /// </summary>
         /// <param name="teamId">チームID</param>
         /// <returns>Channelオブジェクトのリスト</returns>
-        public async Task<List<Channel>?> ListChannelsAsync(string teamId)
+        public async Task<List<Channel>> ListChannelsAsync(string teamId)
         {
             Console.WriteLine($"\n--- チームID: {teamId} のチャンネル一覧を取得します ---");
             if (string.IsNullOrEmpty(teamId))
             {
                 Console.WriteLine("チームIDが空です。");
-                return null;
+                return new List<Channel>();
             }
             
             // モックデータを使用する場合
@@ -201,7 +201,7 @@ namespace MicrosoftGraphCSharpe.Library.Services
             {
                 Console.WriteLine($"チームID {teamId} のチャンネル一覧取得エラー: {ex.Message}");
                 Console.WriteLine($"エラー詳細: {ex}");
-                return null;
+                return new List<Channel>();
             }
         }
 
@@ -212,13 +212,13 @@ namespace MicrosoftGraphCSharpe.Library.Services
         /// <param name="channelId">チャンネルID</param>
         /// <param name="messageContent">送信するメッセージの内容</param>
         /// <returns>送信されたメッセージ情報</returns>
-        public async Task<ChatMessage?> SendMessageToChannelAsync(string teamId, string channelId, string messageContent)
+        public async Task<ChatMessage> SendMessageToChannelAsync(string teamId, string channelId, string messageContent)
         {
             Console.WriteLine($"\n--- チームID: {teamId}, チャンネルID: {channelId} にメッセージを送信します ---");
             if (string.IsNullOrEmpty(teamId) || string.IsNullOrEmpty(channelId) || string.IsNullOrEmpty(messageContent))
             {
                 Console.WriteLine("チームID、チャンネルID、およびメッセージ内容は空にできません。");
-                return null;
+                throw new ArgumentNullException("必須パラメータがnullまたは空です");
             }
             
             // モックデータを使用する場合
@@ -244,13 +244,13 @@ namespace MicrosoftGraphCSharpe.Library.Services
             {
                 var sentMessage = await _graphClient.SendMessageToChannelAsync(teamId, channelId, messageContent);
                 Console.WriteLine($"メッセージが正常に送信されました。ID: {sentMessage?.Id}");
-                return sentMessage;
+                return sentMessage ?? throw new InvalidOperationException("送信されたメッセージが正しく返されませんでした");
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"メッセージ送信エラー: {ex.Message}");
                 Console.WriteLine($"エラー詳細: {ex}");
-                return null;
+                throw new Exception($"メッセージ送信エラー: {ex.Message}", ex);
             }
         }
 
@@ -261,13 +261,13 @@ namespace MicrosoftGraphCSharpe.Library.Services
         /// <param name="channelId">チャンネルID</param>
         /// <param name="top">取得するメッセージの最大数</param>
         /// <returns>ChatMessageオブジェクトのリスト</returns>
-        public async Task<List<ChatMessage>?> ListChannelMessagesAsync(string teamId, string channelId, int top = 10)
+        public async Task<List<ChatMessage>> ListChannelMessagesAsync(string teamId, string channelId, int top = 10)
         {
             Console.WriteLine($"\n--- チームID: {teamId}, チャンネルID: {channelId} の最新{top}件のメッセージを取得します ---");
             if (string.IsNullOrEmpty(teamId) || string.IsNullOrEmpty(channelId))
             {
                 Console.WriteLine("チームIDとチャンネルIDは空にできません。");
-                return null;
+                return new List<ChatMessage>();
             }
             
             // モックデータを使用する場合
@@ -324,7 +324,7 @@ namespace MicrosoftGraphCSharpe.Library.Services
             {
                 Console.WriteLine($"チャンネルID {channelId} のメッセージ一覧取得エラー: {ex.Message}");
                 Console.WriteLine($"エラー詳細: {ex}");
-                return null;
+                return new List<ChatMessage>();
             }
         }
     }
