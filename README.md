@@ -88,15 +88,25 @@ dotnet test
 
 ## Docker環境での実行
 
-Dockerfileを使用して、コンテナ環境でアプリケーションを実行することも可能です。
+Dockerfileを使用して、コンテナ環境でアプリケーションを実行することも可能です。モックデータを使用することで、実際のTeams環境がなくてもアプリケーションの動作確認ができます。
 
 ```bash
 # Dockerイメージのビルド
 docker build -t microsoftgraphcsharpe .
 
-# Dockerコンテナの実行
+# 対話モードでコンテナ実行（結果を直接確認）
 docker run -it --rm microsoftgraphcsharpe
+
+# バックグラウンドでコンテナ実行（ログを確認）
+docker run -d --name msgraph-app microsoftgraphcsharpe
+docker logs -f msgraph-app
+
+# 全てのテストを実行（モックデータを使用）
+docker build -t msgraph-test --target build .
+docker run --rm msgraph-test dotnet test
 ```
+
+Dockerコンテナ内では`appsettings.Development.json`の設定が使用され、`DOTNET_ENVIRONMENT=Development`環境変数により開発環境用の設定が適用されます。`UseLocalMockData=true`によりモックデータが使用されます。
 
 ## 注意事項
 
