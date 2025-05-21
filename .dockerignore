@@ -1,0 +1,27 @@
+# filepath: /Users/niya/Documents/MicrosoftGraphCSharpe/.dockerignore
+# ビルド関連のディレクトリは無視する
+**/bin/
+**/obj/
+
+# モックデータでテストするためappsettings.Development.jsonは除外しない
+# appsettings.Development.json
+# appsettings.*.json
+# !appsettings.json
+
+# Git関連ファイル
+.git/
+.gitignore
+
+# Visual Studioの設定ファイル
+**/.vs/
+**/*.user
+**/*.userosscache
+**/*.suo
+
+# その他のファイル
+README.md
+LICENSE
+*.md
+.dockerignore
+Dockerfile
+docker-compose.yml

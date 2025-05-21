@@ -1,0 +1,23 @@
+# filepath: /Users/niya/Documents/MicrosoftGraphCSharpe/docker-compose.yml
+version: '3.8'
+
+services:
+  microsoftgraphcsharpe:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: microsoftgraphcsharpe
+    volumes:
+      # 設定ファイルをコンテナにマウントするためのボリューム設定
+      - ./appsettings.json:/app/appsettings.json:ro
+      # 開発環境設定ファイルは開発用途でのみマウント（実際に使用する場合は適切に編集が必要）
+      # - ./appsettings.Development.json:/app/appsettings.Development.json:ro
+    environment:
+      # 環境変数を使用して設定することも可能
+      # - "GraphApi__TenantId=your_tenant_id"
+      # - "GraphApi__ClientId=your_client_id"
+      # - "GraphApi__ClientSecret=your_client_secret"
+      - "DOTNET_ENVIRONMENT=Development"
+    # 対話的なコマンドラインが必要な場合
+    stdin_open: true
+    tty: true

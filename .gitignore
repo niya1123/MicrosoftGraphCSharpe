@@ -1,0 +1,29 @@
+## Ignore Visual Studio temporary files, build results, and generated files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+## Ignore NuGet packages
+packages/
+*.nupkg
+
+## Ignore Mac specific files
+.DS_Store
+
+## Ignore build output
+[Bb]in/
+[Oo]bj/
+
+## Ignore Rider files
+.idea/
+
+## Ignore VS Code files
+.vscode/
+
+## Ignore User Secrets
+**/secrets.json
+
+## Environment variables
+.env
+appsettings.Development.json
