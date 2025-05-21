@@ -215,10 +215,20 @@ namespace MicrosoftGraphCSharpe.Library.Services
         public async Task<ChatMessage> SendMessageToChannelAsync(string teamId, string channelId, string messageContent)
         {
             Console.WriteLine($"\n--- チームID: {teamId}, チャンネルID: {channelId} にメッセージを送信します ---");
-            if (string.IsNullOrEmpty(teamId) || string.IsNullOrEmpty(channelId) || string.IsNullOrEmpty(messageContent))
+            if (string.IsNullOrEmpty(teamId))
             {
-                Console.WriteLine("チームID、チャンネルID、およびメッセージ内容は空にできません。");
-                throw new ArgumentNullException("必須パラメータがnullまたは空です");
+                Console.WriteLine("チームIDは空にできません。");
+                throw new ArgumentNullException(nameof(teamId), "チームIDはnullまたは空です。");
+            }
+            if (string.IsNullOrEmpty(channelId))
+            {
+                Console.WriteLine("チャンネルIDは空にできません。");
+                throw new ArgumentNullException(nameof(channelId), "チャンネルIDはnullまたは空です。");
+            }
+            if (string.IsNullOrEmpty(messageContent))
+            {
+                Console.WriteLine("メッセージ内容は空にできません。");
+                throw new ArgumentNullException(nameof(messageContent), "メッセージ内容はnullまたは空です。");
             }
             
             // モックデータを使用する場合
