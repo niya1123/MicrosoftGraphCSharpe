@@ -86,6 +86,15 @@ dotnet run --project src/MicrosoftGraphCSharpe.ConsoleApp
 dotnet test
 ```
 
+### CI/CD テスト
+
+このリポジトリはGitHub Actionsを使用して、ブランチに変更があった場合に自動的にテストを実行します。以下の環境でテストが実行されます：
+
+1. ローカル環境（dotnet testコマンドを使用）
+2. Docker環境（コンテナ内でテストを実行）
+
+GitHub Actionsの設定は`.github/workflows/run-tests.yml`ファイルで定義されています。
+
 ## Docker環境での実行
 
 Dockerfileを使用して、コンテナ環境でアプリケーションを実行することも可能です。モックデータを使用することで、実際のTeams環境がなくてもアプリケーションの動作確認ができます。
