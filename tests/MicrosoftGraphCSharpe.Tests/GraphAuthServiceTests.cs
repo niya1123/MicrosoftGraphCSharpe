@@ -61,7 +61,7 @@ namespace MicrosoftGraphCSharpe.Tests
         /// TenantIdが設定されていない場合に例外が発生することを確認するテスト
         /// </summary>
         [TestMethod]
-        [ExpectedException(typeof(System.Exception))]
+        [ExpectedException(typeof(AggregateException))]
         public void GetAuthenticatedGraphClient_MissingTenantId_ThrowsArgumentNullException()
         {
             // 準備 (Arrange)
