@@ -6,31 +6,48 @@ using System.Linq; // .Select()に必要
 using System;
 using Microsoft.Extensions.Configuration;
 using MicrosoftGraphCSharpe.Library.Models;
+using MicrosoftGraphCSharpe.Library.Auth;
 
 namespace MicrosoftGraphCSharpe.Library.Services
 {
     /// <summary>
     /// TeamsService - Microsoft Teams操作サービス
     /// Microsoft Graph APIを使用してTeamsの操作（チームの一覧取得、チャンネルの操作、メッセージの送受信）を行います。
+    /// Application認証とDelegated認証を自動的に切り替える機能を備えています。
     /// モックデータを使用したローカルテスト機能も備えています。
     /// </summary>
     public class TeamsService
     {
         private readonly IGraphClientWrapper _graphClient;
+        private readonly GraphAuthService _authService;
         private readonly IConfiguration _configuration;
         private readonly bool _useLocalMockData;
         private readonly SampleDataConfig? _sampleData;
 
         /// <summary>
-        /// コンストラクタ
+        /// コンストラクタ（GraphServiceClient使用）
         /// </summary>
-        /// <param name="graphClient">GraphServiceClientのラッパー</param>
+        /// <param name="graphServiceClient">GraphServiceClientインスタンス</param>
         /// <param name="configuration">設定情報を提供するIConfigurationインスタンス</param>
         /// <param name="useLocalMockData">モックデータを使用するかどうか（テスト用）</param>
         /// <exception cref="ArgumentNullException">引数がnullの場合にスローされます</exception>
-        public TeamsService(IGraphClientWrapper graphClient, IConfiguration configuration, bool? useLocalMockDataOverride = null)
+        public TeamsService(GraphServiceClient graphServiceClient, IConfiguration configuration, bool? useLocalMockDataOverride = null)
+            : this(new GraphClientWrapper(graphServiceClient), new GraphAuthService(configuration), configuration, useLocalMockDataOverride)
+        {
+        }
+
+        /// <summary>
+        /// コンストラクタ（IGraphClientWrapper使用）
+        /// </summary>
+        /// <param name="graphClient">GraphServiceClientのラッパー</param>
+        /// <param name="authService">認証サービス</param>
+        /// <param name="configuration">設定情報を提供するIConfigurationインスタンス</param>
+        /// <param name="useLocalMockData">モックデータを使用するかどうか（テスト用）</param>
+        /// <exception cref="ArgumentNullException">引数がnullの場合にスローされます</exception>
+        public TeamsService(IGraphClientWrapper graphClient, GraphAuthService authService, IConfiguration configuration, bool? useLocalMockDataOverride = null)
         {
             _graphClient = graphClient ?? throw new ArgumentNullException(nameof(graphClient));
+            _authService = authService ?? throw new ArgumentNullException(nameof(authService));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             
             // テスト用に直接設定できるようにする
@@ -65,18 +82,6 @@ namespace MicrosoftGraphCSharpe.Library.Services
                     _sampleData = new SampleDataConfig();
                 }
             }
-        }
-        
-        /// <summary>
-        /// コンストラクタ（GraphServiceClient用）
-        /// </summary>
-        /// <param name="graphServiceClient">認証済みのGraphServiceClientインスタンス</param>
-        /// <param name="configuration">設定情報を提供するIConfigurationインスタンス</param>
-        /// <param name="useLocalMockData">モックデータを使用するかどうか（テスト用）</param>
-        /// <exception cref="ArgumentNullException">引数がnullの場合にスローされます</exception>
-        public TeamsService(GraphServiceClient graphServiceClient, IConfiguration configuration, bool? useLocalMockDataOverride = null)
-            : this(new GraphClientWrapper(graphServiceClient), configuration, useLocalMockDataOverride)
-        {
         }
 
         /// <summary>
@@ -207,6 +212,7 @@ namespace MicrosoftGraphCSharpe.Library.Services
 
         /// <summary>
         /// 指定されたチャンネルにメッセージを送信します
+        /// Delegated認証を使用して実際のユーザーとしてメッセージを送信します
         /// </summary>
         /// <param name="teamId">チームID</param>
         /// <param name="channelId">チャンネルID</param>
@@ -225,7 +231,7 @@ namespace MicrosoftGraphCSharpe.Library.Services
                 Console.WriteLine("チャンネルIDは空にできません。");
                 throw new ArgumentNullException(nameof(channelId), "チャンネルIDはnullまたは空です。");
             }
-            if (string.IsNullOrEmpty(messageContent))
+            if (string.IsNullOrEmpty(messageContent?.Trim()))
             {
                 Console.WriteLine("メッセージ内容は空にできません。");
                 throw new ArgumentNullException(nameof(messageContent), "メッセージ内容はnullまたは空です。");
@@ -236,12 +242,12 @@ namespace MicrosoftGraphCSharpe.Library.Services
             {
                 Console.WriteLine("メッセージ送信のモック実装を使用します。");
                 var messageId = Guid.NewGuid().ToString();
-                Console.WriteLine($"メッセージが正常に送信されました（モック）。ID: {messageId}");
+                Console.WriteLine($"✅ メッセージが正常に送信されました（モック）。ID: {messageId}");
                 
                 return new ChatMessage
                 {
                     Id = messageId,
-                    Body = new ItemBody { Content = messageContent, ContentType = BodyType.Html },
+                    Body = new ItemBody { Content = messageContent, ContentType = BodyType.Text },
                     From = new ChatMessageFromIdentitySet 
                     { 
                         User = new Identity { DisplayName = "モックユーザー" } 
@@ -249,17 +255,36 @@ namespace MicrosoftGraphCSharpe.Library.Services
                 };
             }
             
-            // 実際のAPI呼び出しを行う場合
+            // Delegated認証でメッセージを送信
             try
             {
-                var sentMessage = await _graphClient.SendMessageToChannelAsync(teamId, channelId, messageContent);
-                Console.WriteLine($"メッセージが正常に送信されました。ID: {sentMessage?.Id}");
+                Console.WriteLine("📤 Delegated認証でメッセージを送信中...");
+                var delegatedClient = await _authService.GetDelegatedClientAsync();
+                
+                var message = new ChatMessage
+                {
+                    Body = new ItemBody
+                    {
+                        Content = messageContent,
+                        ContentType = BodyType.Text
+                    }
+                };
+
+                var sentMessage = await delegatedClient.Teams[teamId].Channels[channelId].Messages.PostAsync(message);
+                
+                Console.WriteLine("✅ メッセージが正常に送信されました。");
                 return sentMessage ?? throw new InvalidOperationException("送信されたメッセージが正しく返されませんでした");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"メッセージ送信エラー: {ex.Message}");
-                Console.WriteLine($"エラー詳細: {ex}");
+                Console.WriteLine($"❌ メッセージ送信に失敗しました: {ex.Message}");
+                Console.WriteLine("\n💡 メッセージ送信を成功させるには、以下を実行してください:");
+                Console.WriteLine("   1. Azure Portal > App registrations > 認証:");
+                Console.WriteLine("      - リダイレクト URI: http://localhost:3000/auth/callback");
+                Console.WriteLine("      - Publicクライアントフローを許可: はい");
+                Console.WriteLine("   2. Azure Portal > API のアクセス許可:");
+                Console.WriteLine("      - ChannelMessage.Send (Delegated)");
+                Console.WriteLine("   3. Teams管理センターでアプリケーションを承認\n");
                 throw new Exception($"メッセージ送信エラー: {ex.Message}", ex);
             }
         }
