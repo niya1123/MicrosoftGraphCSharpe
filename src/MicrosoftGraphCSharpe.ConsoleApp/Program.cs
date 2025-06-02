@@ -17,6 +17,12 @@ class Program
     /// <param name="args">コマンドライン引数</param>
     static async Task Main(string[] args)
     {
+        // プロセス終了時のクリーンアップ
+        Console.CancelKeyPress += (sender, e) => {
+            Console.WriteLine("\n\n🛑 アプリケーションを終了しています...");
+            e.Cancel = false;
+        };
+
         var host = CreateHostBuilder(args).Build();
 
         var teamsService = host.Services.GetRequiredService<TeamsService>();
@@ -74,7 +80,11 @@ class Program
                 Console.WriteLine("メッセージの送信に失敗しました。");
             }
 
-            Console.WriteLine($"チャンネル {firstChannel.DisplayName} のメッセージ一覧を取得しています...");
+            // 対話的メッセージ送信機能
+            Console.WriteLine($"\n--- 対話的メッセージ送信 ---");
+            await InteractiveMessageSending(teamsService, firstTeam.Id, firstChannel.Id, firstChannel.DisplayName ?? "不明なチャンネル");
+
+            Console.WriteLine($"\nチャンネル {firstChannel.DisplayName} のメッセージ一覧を取得しています...");
             var messages = await teamsService.ListChannelMessagesAsync(firstTeam.Id, firstChannel.Id);
             if (messages != null && messages.Any())
             {
@@ -93,6 +103,67 @@ class Program
         {
             Console.WriteLine($"エラーが発生しました: {ex.Message}");
             Console.WriteLine($"詳細: {ex}");
+        }
+    }
+
+    /// <summary>
+    /// 対話的メッセージ送信機能
+    /// ユーザーからの入力を受け取ってメッセージを送信します
+    /// </summary>
+    /// <param name="teamsService">TeamsServiceインスタンス</param>
+    /// <param name="teamId">チームID</param>
+    /// <param name="channelId">チャンネルID</param>
+    /// <param name="channelName">チャンネル名</param>
+    static async Task InteractiveMessageSending(TeamsService teamsService, string teamId, string channelId, string channelName)
+    {
+        Console.WriteLine("📝 メッセージ送信機能を開始します。");
+        Console.WriteLine("   \"exit\" または \"quit\" と入力すると終了します。");
+        Console.WriteLine("   空白行を入力すると送信をスキップします。\n");
+
+        while (true)
+        {
+            try
+            {
+                Console.Write($"💬 {channelName} に送信するメッセージを入力してください: ");
+                var message = Console.ReadLine();
+                
+                // 終了コマンドをチェック
+                if (string.IsNullOrEmpty(message) || 
+                    message.Trim().Equals("exit", StringComparison.OrdinalIgnoreCase) || 
+                    message.Trim().Equals("quit", StringComparison.OrdinalIgnoreCase))
+                {
+                    Console.WriteLine("👋 メッセージ送信機能を終了します。");
+                    break;
+                }
+                
+                // 空白メッセージをスキップ
+                if (string.IsNullOrWhiteSpace(message))
+                {
+                    Console.WriteLine("⚠️  空のメッセージはスキップされました。\n");
+                    continue;
+                }
+                
+                // メッセージを送信
+                Console.WriteLine($"\n📤 メッセージを送信中: \"{message}\"");
+                var sentMessage = await teamsService.SendMessageToChannelAsync(teamId, channelId, message);
+                
+                if (sentMessage != null)
+                {
+                    Console.WriteLine("✅ メッセージが正常に送信されました。");
+                }
+                else
+                {
+                    Console.WriteLine("❌ メッセージの送信に失敗しました。");
+                }
+                
+                Console.WriteLine("");
+                
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ メッセージ送信中にエラーが発生しました: {ex.Message}");
+                Console.WriteLine("🔄 次のメッセージを入力してください。\n");
+            }
         }
     }
 
@@ -171,15 +242,12 @@ class Program
             .ConfigureServices((hostContext, services) =>
             {
                 services.AddSingleton<GraphAuthService>();
-                services.AddSingleton(provider =>
-                {
-                    var authService = provider.GetRequiredService<GraphAuthService>();
-                    return authService.GetAuthenticatedGraphClient();
-                });
                 services.AddSingleton<TeamsService>(provider => {
-                    var graphServiceClient = provider.GetRequiredService<GraphServiceClient>();
+                    var authService = provider.GetRequiredService<GraphAuthService>();
                     var configuration = provider.GetRequiredService<IConfiguration>();
-                    return new TeamsService(graphServiceClient, configuration);
+                    // 新しいコンストラクタを使用（Application認証を自動取得）
+                    var appClient = authService.GetApplicationClientAsync().Result;
+                    return new TeamsService(appClient, configuration);
                 });
             });
 }
