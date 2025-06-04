@@ -70,12 +70,11 @@ Microsoft Graph APIを使用してC#でTeamsを操作するサンプルアプリ
     "TenantId": "あなたのテナントID",
     "ClientId": "アプリケーションのクライアントID",
     "ClientSecret": "アプリケーションのクライアントシークレット"
-  },
-  "UseLocalMockData": false
+  }
 }
 ```
 
-実際のTeams環境がない場合は、`UseLocalMockData`を`true`に設定することでモックデータを使用できます。
+**推奨**: 設定ファイルでの`UseLocalMockData`設定ではなく、環境変数`USE_MOCK_DATA`による制御を使用してください。
 モックデータは`appsettings.json`の`SampleData`セクションで設定できます。
 
 ### 環境変数による制御（推奨）
