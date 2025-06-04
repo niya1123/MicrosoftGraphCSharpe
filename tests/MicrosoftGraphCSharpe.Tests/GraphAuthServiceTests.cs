@@ -61,7 +61,6 @@ namespace MicrosoftGraphCSharpe.Tests
         /// TenantIdが設定されていない場合に例外が発生することを確認するテスト
         /// </summary>
         [TestMethod]
-        [ExpectedException(typeof(System.Exception))]
         public void GetAuthenticatedGraphClient_MissingTenantId_ThrowsArgumentNullException()
         {
             // 準備 (Arrange)
@@ -73,8 +72,8 @@ namespace MicrosoftGraphCSharpe.Tests
             
             var authService = new GraphAuthService(configWithMissingTenantId.Object);
 
-            // Act
-            authService.GetAuthenticatedGraphClient(); // Should throw
+            // Act & Assert
+            Assert.ThrowsException<Exception>(() => authService.GetApplicationClientAsync().GetAwaiter().GetResult());
         }
     }
 }
