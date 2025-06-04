@@ -70,9 +70,16 @@ cd /Users/niya/Documents/MicrosoftGraphCSharpe
 # アプリケーションのビルド
 dotnet build
 
-# コンソールアプリケーションの実行
+# コンソールアプリケーションの実行（開発環境）
+DOTNET_ENVIRONMENT=Development dotnet run --project src/MicrosoftGraphCSharpe.ConsoleApp
+
+# または、Azure ADの設定がある場合（本番環境）
 dotnet run --project src/MicrosoftGraphCSharpe.ConsoleApp
 ```
+
+**注意:** 
+- 開発環境では `DOTNET_ENVIRONMENT=Development` を指定することで、モックデータを使用した動作確認ができます
+- Azure ADの設定が完了している場合は、環境変数なしで実際のMicrosoft Graph APIを使用できます
 
 ### Visual Studio Code
 
@@ -107,6 +114,25 @@ docker run --rm msgraph-test dotnet test
 ```
 
 Dockerコンテナ内では`appsettings.Development.json`の設定が使用され、`DOTNET_ENVIRONMENT=Development`環境変数により開発環境用の設定が適用されます。`UseLocalMockData=true`によりモックデータが使用されます。
+
+## トラブルシューティング
+
+### アプリケーション実行時のエラー
+
+**問題:** `dotnet run` 実行時に「Azure AD アプリケーション登録の詳細情報が見つからない」エラーが発生する
+
+**解決方法:**
+```bash
+# 開発環境として実行する（モックデータを使用）
+DOTNET_ENVIRONMENT=Development dotnet run --project src/MicrosoftGraphCSharpe.ConsoleApp
+```
+
+**原因:** 環境変数が設定されていない場合、アプリケーションは本番環境として動作し、実際のAzure AD設定を要求します。開発環境として実行することで、モックデータを使用した動作確認ができます。
+
+### 環境別の動作
+
+- **Development環境** (`DOTNET_ENVIRONMENT=Development`): モックデータを使用、Azure AD設定不要
+- **Production環境** (デフォルト): 実際のMicrosoft Graph API使用、Azure AD設定必須
 
 ## 注意事項
 
