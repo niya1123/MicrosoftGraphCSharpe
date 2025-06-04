@@ -24,10 +24,12 @@ namespace MicrosoftGraphCSharpe.Library.Services
 
         /// <summary>
         /// ユーザーが参加しているチームの一覧を取得します
+        /// アプリケーション認証の場合は全てのチームを取得します
         /// </summary>
         public async Task<List<Team>> GetMyTeamsAsync()
         {
-            var teams = await _graphClient.Me.JoinedTeams.GetAsync();
+            // アプリケーション認証では /teams エンドポイントを使用
+            var teams = await _graphClient.Teams.GetAsync();
             return teams?.Value?.ToList() ?? new List<Team>();
         }
 
