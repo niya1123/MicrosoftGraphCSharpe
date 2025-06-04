@@ -57,15 +57,29 @@ namespace MicrosoftGraphCSharpe.Library.Services
             }
             else
             {
-                // 通常の設定読み込み処理
+                // 環境変数を優先して確認、次に設定ファイルを確認
                 try
                 {
-                    _useLocalMockData = _configuration.GetValue<bool>("UseLocalMockData", false);
+                    // 環境変数 USE_MOCK_DATA をチェック
+                    var envMockData = Environment.GetEnvironmentVariable("USE_MOCK_DATA");
+                    if (!string.IsNullOrEmpty(envMockData))
+                    {
+                        _useLocalMockData = envMockData.Equals("true", StringComparison.OrdinalIgnoreCase) ||
+                                           envMockData.Equals("1", StringComparison.OrdinalIgnoreCase);
+                        Console.WriteLine($"環境変数 USE_MOCK_DATA={envMockData} が設定されています。モックデータ使用: {_useLocalMockData}");
+                    }
+                    else
+                    {
+                        // 環境変数がない場合は設定ファイルから読み込み
+                        _useLocalMockData = _configuration.GetValue<bool>("UseLocalMockData", false);
+                        Console.WriteLine($"設定ファイルから UseLocalMockData={_useLocalMockData} を読み込みました。");
+                    }
                 }
                 catch (Exception)
                 {
-                    // IConfigurationからの読み込みに失敗した場合はデフォルト値を使用
+                    // 読み込みに失敗した場合はデフォルト値を使用
                     _useLocalMockData = false;
+                    Console.WriteLine("設定読み込みに失敗しました。デフォルト値 (false) を使用します。");
                 }
             }
             
