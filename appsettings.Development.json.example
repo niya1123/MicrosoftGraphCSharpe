@@ -1,9 +1,62 @@
 {
   "GraphApi": {
     "ClientId": "YOUR_CLIENT_ID",
-    "ClientSecret": "YOUR_CLIENT_SECRET",
+    "ClientSecret": "YOUR_CLIENT_SECRET", 
     "TenantId": "YOUR_TENANT_ID",
     "TargetTeamId": "", // Optional: Specify a team ID to target
     "TargetChannelId": "" // Optional: Specify a channel ID to target
+  },
+  // SampleData: モックデータ用の設定（USE_MOCK_DATA=true時に使用）
+  // 実際のMicrosoft Graph APIの代わりに使用されるテストデータ
+  "SampleData": {
+    "Teams": [
+      {
+        "Id": "sample-team-1",
+        "DisplayName": "Sample Team 1", 
+        "Description": "This is a sample team for testing"
+      },
+      {
+        "Id": "sample-team-2",
+        "DisplayName": "Sample Team 2",
+        "Description": "Another sample team for testing"
+      }
+    ],
+    // Channels: チーム別のチャンネルリスト
+    "Channels": {
+      "sample-team-1": [
+        {
+          "Id": "sample-channel-1",
+          "DisplayName": "Sample Channel 1",
+          "Description": "This is the general channel for Sample Team 1"
+        },
+        {
+          "Id": "sample-channel-2", 
+          "DisplayName": "Sample Channel 2",
+          "Description": "This is a test channel for Sample Team 1"
+        }
+      ],
+      "sample-team-2": [
+        {
+          "Id": "sample-channel-3",
+          "DisplayName": "Sample Channel 3", 
+          "Description": "This is the general channel for Sample Team 2"
+        }
+      ]
+    },
+    // Messages: チーム|チャンネル形式のキーでメッセージリスト
+    "Messages": {
+      "sample-team-1|sample-channel-1": [
+        {
+          "Id": "sample-message-1",
+          "Content": "Hello from Sample Message 1",
+          "FromName": "Sample User 1"
+        },
+        {
+          "Id": "sample-message-2",
+          "Content": "This is Sample Message 2", 
+          "FromName": "Sample User 2"
+        }
+      ]
+    }
   }
 }
