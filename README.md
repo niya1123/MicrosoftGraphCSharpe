@@ -1,108 +1,218 @@
-# MicrosoftGraphCSharpe
+# Microsoft Graph C# Teams アプリ
 
-Microsoft Graph APIを使用してC#でTeamsを操作するサンプルアプリケーション
+このプロジェクトは、C# と Microsoft Graph SDK を使用して Microsoft Teams と対話する方法を示します。自動認証切り替え機能により、読み取り操作には Application 認証、メッセージ送信には Delegated 認証を自動的に選択します。
 
-## 概要
+## 主な特徴
 
-このプロジェクトはMicrosoft Graph APIを活用してMicrosoft Teamsを操作するサンプル実装です。
-環境変数による柔軟な制御機能により、開発環境でのモックデータと本番環境での実際のAPI使用を簡単に切り替えることができます。
+• 🔄 **自動認証切り替え**: 操作に応じて Application 認証と Delegated 認証を自動選択  
+• 📖 **読み取り操作**: チーム一覧、チャンネル一覧、メッセージ一覧 (Application 認証)  
+• 📝 **メッセージ送信**: インタラクティブなメッセージ送信機能 (Delegated 認証)  
+• 🔧 **設定不要**: 一度の設定で両方の認証モードが利用可能  
+• ✅ **完全テスト**: 全機能のユニットテスト実装済み  
+• 🎯 **モック対応**: 環境変数による開発・本番環境の簡単切り替え
 
-### 主な機能
+## 認証アーキテクチャ
 
-- **Azure Active Directory認証**
-  - Application認証（クライアント資格情報フロー）
-  - Delegated認証（Device Code Flow）- メッセージ送信時
-- **Teams操作**
-  - Teamsの一覧取得
-  - チャンネルの一覧取得
-  - チャンネルへのメッセージ送信（対話型）
-  - チャンネルメッセージの一覧取得
-- **開発サポート**
-  - モックデータによる開発・テスト環境
-  - 環境変数による動作制御
-  - 包括的な単体テスト
+このアプリケーションは、Microsoft Graph API の制約に対応するため、2つの認証方式を自動的に切り替えます：
 
-## 技術仕様
+### Application 認証 (Client Credential Flow)
+• **用途**: 読み取り操作 (チーム、チャンネル、メッセージ一覧の取得)  
+• **特徴**: ユーザー操作不要、自動実行可能  
+• **アクセス許可**: アプリケーション権限  
 
-- **.NET 8.0** - 安定したパフォーマンスと互換性
-- **Microsoft.Graph** - 最新のGraph API SDK
-- **Azure.Identity** 1.14.0 - セキュリティ脆弱性対応済み
-- **MSTest** - 包括的なテストフレームワーク
+### Delegated 認証 (Device Code Flow)
+• **用途**: メッセージ送信操作  
+• **特徴**: ユーザー認証が必要、ブラウザでの認証フロー  
+• **アクセス許可**: 委任されたアクセス許可  
 
-## 必要な環境
+## 前提条件
 
-- [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) （.NET 9.0ではなく8.0を使用）
-- Visual Studio 2022、Visual Studio Code、またはその他の.NET開発環境
-- Azure Active Directory テナント
-- Microsoft Teamsが有効化されたテナント
-- Microsoft Graph APIにアクセスするためのAzure ADアプリケーション登録
+• **.NET 8.0 SDK** (推奨) - [ダウンロード](https://dotnet.microsoft.com/download/dotnet/8.0)  
+• **Visual Studio 2022、Visual Studio Code**、またはその他の.NET開発環境  
+• **Docker** (Docker ベースの実行用)  
+• **Microsoft Graph の必要なアクセス許可を持つ Azure AD アプリケーション登録** - [Azure ADアプリケーション登録方法](https://learn.microsoft.com/ja-jp/graph/auth-register-app-v2)
+
+### 必要なアクセス許可
+
+Azure AD アプリケーション登録で以下のアクセス許可を設定してください：
+
+#### アプリケーション権限 (Application 認証用)
+• `Team.ReadBasic.All` - チーム情報の読み取り  
+• `TeamSettings.Read.All` - チーム設定の読み取り  
+• `ChannelMessage.Read.All` - チャンネルメッセージの読み取り  
+
+#### 委任されたアクセス許可 (Delegated 認証用)
+• `ChannelMessage.Send` - チャンネルメッセージの送信  
+• `User.Read` - ユーザー情報の読み取り
+
+### 重要な設定
+1. [Azure Portal](https://portal.azure.com) > **アプリの登録** > 対象アプリ選択
+2. **認証** > **詳細設定** > **パブリック クライアント フローを許可する** を **はい** に設定
+3. **クライアントシークレット**を作成し、値をメモ
+4. **管理者の同意**を付与
 
 ## プロジェクト構成
 
-- `MicrosoftGraphCSharpe.ConsoleApp`: コンソールアプリケーション
-- `MicrosoftGraphCSharpe.Library`: Graph APIを使用するライブラリ
-- `MicrosoftGraphCSharpe.Tests`: 単体テスト
-
-## 事前準備
-
-### Azure ADアプリケーション登録
-
-1. [Azure Portal](https://portal.azure.com)にアクセスし、「アプリの登録」でアプリケーションを登録します
-2. 以下のMicrosoft Graph APIの**アプリケーション権限**を追加：
-   - `Team.ReadBasic.All`（チームの基本情報を読み取る）
-   - `TeamSettings.Read.All`（チーム設定を読み取る）
-   - `ChannelMessage.Read.All`（チャンネルメッセージを読み取る）
-3. 以下のMicrosoft Graph APIの**委任されたアクセス許可**を追加：
-   - `ChannelMessage.Send`（チャンネルメッセージを送信する）
-   - `User.Read`（ユーザー情報の読み取り）
-4. **認証** > **詳細設定** > **パブリック クライアント フローを許可する** を **はい** に設定
-5. クライアントシークレットを作成し、値をメモしておきます
-6. 管理者の同意を付与します
-
-## 設定
-
-環境設定ファイル(`appsettings.Development.json`)を作成し、以下の情報を設定します。
-サンプルとして`appsettings.Development.json.example`を参照してください。
-
-```json
-{
-  "GraphApi": {
-    "TenantId": "あなたのテナントID",
-    "ClientId": "アプリケーションのクライアントID",
-    "ClientSecret": "アプリケーションのクライアントシークレット"
-  }
-}
+```
+MicrosoftGraphCSharpe/
+├── src/
+│   ├── MicrosoftGraphCSharpe.ConsoleApp/     # コンソールアプリケーション
+│   │   ├── Program.cs                        # メインエントリポイント
+│   │   └── MicrosoftGraphCSharpe.ConsoleApp.csproj
+│   └── MicrosoftGraphCSharpe.Library/        # Graph API ライブラリ
+│       ├── Auth/
+│       │   └── GraphAuthService.cs          # Microsoft Graph 認証ロジック
+│       ├── Services/
+│       │   ├── TeamsService.cs              # Teams操作サービス
+│       │   ├── GraphClientWrapper.cs        # Graph API ラッパー
+│       │   └── IGraphClientWrapper.cs       # インターフェース
+│       ├── Models/
+│       │   └── MockData.cs                  # モックデータ定義
+│       └── MicrosoftGraphCSharpe.Library.csproj
+├── tests/
+│   └── MicrosoftGraphCSharpe.Tests/          # ユニットテスト
+│       ├── GraphAuthServiceTests.cs         # 認証機能テスト
+│       ├── TeamsServiceTests.cs             # Teams操作機能テスト
+│       └── MicrosoftGraphCSharpe.Tests.csproj
+├── appsettings.json                          # 基本設定とモックデータ
+├── appsettings.Development.json              # 開発環境設定
+├── appsettings.Development.json.example      # 設定ファイル例
+├── Dockerfile                               # Docker設定
+├── docker-compose.yml                       # Docker Compose設定
+├── AZURE_SETUP_GUIDE.md                     # Azure AD詳細設定手順
+├── QUICK_FIX_GUIDE.md                       # 一般的なエラー解決ガイド
+├── AZURE_PERMISSION_FIX.md                  # API アクセス許可修正手順
+└── README.md
 ```
 
-**推奨**: 設定ファイルでの`UseLocalMockData`設定ではなく、環境変数`USE_MOCK_DATA`による制御を使用してください。
-モックデータは`appsettings.json`の`SampleData`セクションで設定できます。
+## セットアップ
+
+1. リポジトリをクローンする（該当する場合）か、プロジェクトファイルを作成します
+2. 依存関係をインストールします:
+   ```bash
+   dotnet restore
+   ```
+3. プロジェクトのルートに `appsettings.Development.json.example` をコピーして `appsettings.Development.json` ファイルを作成します:
+   ```bash
+   cp appsettings.Development.json.example appsettings.Development.json
+   ```
+4. `appsettings.Development.json` ファイルに Azure AD アプリケーションの詳細を記入します:
+   • `ClientId`: Azure AD アプリケーション (クライアント) ID
+   • `ClientSecret`: Azure AD アプリケーションのクライアントシークレット
+   • `TenantId`: Azure AD ディレクトリ (テナント) ID
+   • `TargetTeamId` (任意): 操作に使用するデフォルトのチーム ID
+   • `TargetChannelId` (任意): 操作に使用するデフォルトのチャネル ID
+
+### 追加ドキュメントと診断ツール
+
+Azure AD 設定や権限の確認には、以下のドキュメントが役立ちます：
+
+• [AZURE_SETUP_GUIDE.md](./AZURE_SETUP_GUIDE.md) – メッセージ送信を有効にするための詳細な Azure AD 設定手順  
+• [QUICK_FIX_GUIDE.md](./QUICK_FIX_GUIDE.md) – `AADSTS7000218` などの一般的な認証エラーを素早く解決するためのガイド  
+• [AZURE_PERMISSION_FIX.md](./AZURE_PERMISSION_FIX.md) – API アクセス許可設定を修正するための手順
+
+### Team ID と Channel ID の取得方法
+
+Microsoft Teams UIからTeam IDとChannel IDを取得する方法：
+
+#### 1. Team ID の取得
+• Microsoft Teams でチームを開く  
+• ブラウザのアドレスバーのURLを確認  
+• URLに含まれる `groupId=` パラメータの値がTeam ID  
+• 例: `https://teams.microsoft.com/_#/teamDashboard/General?groupId=a536b7f7-b65b-431a-b71e-cd386882d3e6`  
+• この場合のTeam ID: `a536b7f7-b65b-431a-b71e-cd386882d3e6`
+
+#### 2. Channel ID の取得
+• Microsoft Teams でチャンネルを開く  
+• ブラウザのアドレスバーのURLを確認  
+• URLに含まれる `threadId=` パラメータの値がChannel ID（URL エンコードされている）  
+• 例: `https://teams.microsoft.com/_#/channel/19%3Ab4cff4a9964b42dca8f2de52042dd340%40thread.tacv2/General?groupId=...&threadId=19%3Ab4cff4a9964b42dca8f2de52042dd340%40thread.tacv2`  
+• **重要**: URLデコードが必要  
+  - エンコード済み: `19%3Ab4cff4a9964b42dca8f2de52042dd340%40thread.tacv2`  
+  - デコード後: `19:b4cff4a9964b42dca8f2de52042dd340@thread.tacv2`  
+• `appsettings.Development.json` ファイルにはデコード後の値を使用
+
+## 🚀 自動認証切り替え機能
+
+このアプリケーションの最大の特徴は、操作に応じて最適な認証方式を自動選択することです：
+
+### 読み取り操作 (Application 認証)
+• `listMyTeams()` - チーム一覧取得  
+• `listChannels(teamId)` - チャンネル一覧取得  
+• `listChannelMessages(teamId, channelId)` - メッセージ一覧取得  
+
+これらの操作は **ユーザー操作なし** で実行されます。
+
+### メッセージ送信 (Delegated 認証)
+• `sendMessageToChannel(teamId, channelId, message)` - メッセージ送信  
+
+この操作時には自動的に Device Code Flow が起動し、ユーザー認証を求められます：
+
+```
+🔐 ユーザー認証が必要です:
+   ブラウザで以下のURLにアクセスしてください: https://microsoft.com/devicelogin
+   表示される画面で以下のコードを入力してください: ABC123456
+   認証完了まで少々お待ちください...
+```
+
+## メッセージ送信機能
+
+### インタラクティブメッセージ送信
+アプリケーション実行時に、対話型のメッセージ送信機能が利用できます：
+
+• **コンソール入力**: ユーザーがコンソールからメッセージを入力  
+• **自動認証**: メッセージ送信時に Delegated 認証を自動起動  
+• **リアルタイム送信**: 入力されたメッセージを即座にTeamsチャンネルに送信  
+• **終了コマンド**: `exit`または`quit`で機能を終了  
+• **エラーハンドリング**: 送信失敗時の適切なエラー処理  
+
+### 実装内容
+```csharp
+// メッセージ送信 (認証は自動選択)
+await sendMessageToChannel(teamId, channelId, message);
+```
+
+主な機能：
+1. 自動 Delegated 認証クライアント取得
+2. 空のメッセージコンテンツの検証
+3. プレーンテキスト形式でのメッセージ送信
+4. 送信成功・失敗の視覚的フィードバック（絵文字付き）
+
+### 使用方法
+1. アプリケーションを実行すると、まず Application 認証で読み取り操作が実行されます
+2. インタラクティブモードで "メッセージを入力してください (exit/quitで終了): " プロンプトが表示されます
+3. 初回メッセージ送信時に Device Code Flow による認証が自動で開始されます
+4. ブラウザで認証を完了すると、メッセージがTeamsチャンネルに送信されます
+5. 2回目以降の送信では認証は不要です（トークンキャッシュ済み）
+6. `exit`または`quit`を入力すると機能が終了します
+
+## ローカル開発
+
+1. **C# コードをビルドします**:
+   ```bash
+   dotnet build
+   ```
+
+2. **アプリケーションを実行します**:
+   ```bash
+   dotnet run --project src/MicrosoftGraphCSharpe.ConsoleApp
+   ```
+   これにより、通常はメインスクリプト (`Program.cs`) が実行されます。このスクリプトは、以下の処理を実行します (環境変数 `TARGET_TEAM_ID` および `TARGET_CHANNEL_ID` の設定に依存します):
+   
+   • 参加しているチームの一覧を表示します
+   • `TARGET_TEAM_ID` が設定されていれば、そのチームのチャンネル一覧を表示します
+   • `TARGET_TEAM_ID` と `TARGET_CHANNEL_ID` が設定されていれば、そのチャンネルの最新メッセージ数件を表示し、インタラクティブメッセージ送信機能を開始します
+
+3. **開発モード (自動リビルドと再起動あり)**:
+   ```bash
+   dotnet watch run --project src/MicrosoftGraphCSharpe.ConsoleApp
+   ```
 
 ### 環境変数による制御（推奨）
 
 設定ファイルを編集せずに、環境変数でモックデータの使用を制御することができます：
 
 ```bash
-# モックデータを使用する場合（開発・テスト用）
-USE_MOCK_DATA=true dotnet run --project src/MicrosoftGraphCSharpe.ConsoleApp
-
-# 実際のGraph APIを使用する場合（統合テスト・本番用）
-USE_MOCK_DATA=false dotnet run --project src/MicrosoftGraphCSharpe.ConsoleApp
-```
-
-**重要**: 環境変数 `USE_MOCK_DATA` は設定ファイルの `UseLocalMockData` よりも優先されます。
-
-## ローカル環境での実行方法
-
-### コマンドライン
-
-```bash
-# プロジェクトディレクトリに移動
-cd /Users/niya/Documents/MicrosoftGraphCSharpe
-
-# 依存関係の復元とアプリケーションのビルド
-dotnet restore
-dotnet build
-
 # 🚀 開発モード: モックデータで迅速な開発・テスト
 USE_MOCK_DATA=true DOTNET_ENVIRONMENT=Development dotnet run --project src/MicrosoftGraphCSharpe.ConsoleApp
 
@@ -121,170 +231,97 @@ dotnet run --project src/MicrosoftGraphCSharpe.ConsoleApp
 2. **統合テスト**: `USE_MOCK_DATA=false` で実際のAPIとの動作確認
 3. **本番デプロイ**: 環境変数または設定ファイルで制御
 
-**⚠️ 注意:** 
-- `USE_MOCK_DATA=true`: モックデータ使用、Azure AD設定不要
-- `USE_MOCK_DATA=false`: 実際のMicrosoft Graph API使用、Azure AD設定必要
-- 環境変数なし: 設定ファイルの `UseLocalMockData` 値に従う
+## Docker実行
 
-### Visual Studio Code
+Docker を使用してアプリケーションを実行するには、`docker-compose` を利用するのが最も簡単です。
 
-1. Visual Studio Codeでプロジェクトフォルダを開く
-2. .NET Core Launch (.NET) 構成を使用して実行/デバッグ
+1. **appsettings.Development.json ファイルの準備**: ローカル開発と同様に、プロジェクトのルートに設定ファイルを作成し、必要な環境変数（`CLIENT_ID`, `CLIENT_SECRET`, `TENANT_ID` など）を設定してください。`docker-compose.yml` はこの設定ファイルを自動的に読み込みます。
+
+2. **Docker イメージのビルド** (初回または変更時):
+   ```bash
+   docker-compose build
+   ```
+   または、`up` コマンドに `--build` オプションを付けることでもビルドできます。
+
+3. **Docker Compose でコンテナを起動**:
+   ```bash
+   docker-compose up
+   ```
+   これにより、イメージがビルドされ（まだビルドされていない場合）、コンテナが起動します。アプリケーションのログがコンソールに出力されます。
+   
+   デタッチモード（バックグラウンド実行）で起動する場合:
+   ```bash
+   docker-compose up -d
+   ```
+
+4. **コンテナの停止と削除**:
+   ```bash
+   docker-compose down
+   ```
+
+**(補足) Docker コマンドで直接実行する場合:**
+
+`docker-compose` を使用せずに `docker run` で直接コンテナを実行したい場合は、まずイメージをビルドする必要があります。
+
+1. **Docker イメージのビルド**:
+   ```bash
+   docker build -t ms-graph-teams-app .
+   ```
+
+2. **Docker コンテナの実行**: 設定ファイルの内容をコンテナに環境変数として渡す必要があります。例えば、設定ファイルを `--volume` オプションで指定します。
+   ```bash
+   docker run --rm -v $(pwd)/appsettings.Development.json:/app/appsettings.Development.json ms-graph-teams-app
+   ```
+   または、個々の環境変数を `-e` オプションで指定することも可能です。
+
+## スクリプト
+
+• `dotnet build`: C# を実行可能ファイルにコンパイルします  
+• `dotnet run --project src/MicrosoftGraphCSharpe.ConsoleApp`: コンパイルされた C# アプリケーションを実行します  
+• `dotnet watch run --project src/MicrosoftGraphCSharpe.ConsoleApp`: 開発モードでアプリケーションを実行します（ファイル変更時に自動再起動）  
+• `dotnet test`: MSTest を使用してテストを実行します  
+• `dotnet test --logger trx`: テスト結果をTRX形式で出力します（CI/CD用）    
 
 ## テスト
 
-全7件のテストが含まれており、すべて成功することを確認済みです。
+テストは MSTest を使用して実装されています。実際の認証情報を使わずにテストを実行できるようモックを使用しています。
 
-```bash
-# テストの実行
-dotnet test
+テストファイルは `tests` ディレクトリにあります：
 
-# 出力例:
-# 成功!   -失敗:     0、合格:     7、スキップ:     0、合計:     7
-```
+• `GraphAuthServiceTests.cs` - 認証機能のテスト  
+• `TeamsServiceTests.cs` - Graph APIを使ったTeams操作機能のテスト  
 
-### テスト内容
-- **GraphAuthService**: Azure AD認証サービスのテスト
-- **TeamsService**: Teams操作サービスのテスト（モックデータ使用）
-- **設定読み込み**: 環境変数と設定ファイルの優先順位テスト
+### テスト実行方法
 
-## Docker環境での実行
+1. **全テスト実行**:
+   ```bash
+   dotnet test
+   ```
 
-Dockerfileを使用して、コンテナ環境でアプリケーションを実行することも可能です。モックデータを使用することで、実際のTeams環境がなくてもアプリケーションの動作確認ができます。
+2. **詳細出力でテスト実行**:
+   ```bash
+   dotnet test --verbosity normal
+   ```
 
-```bash
-# Dockerイメージのビルド
-docker build -t microsoftgraphcsharpe .
+3. **カバレッジレポート付きテスト実行**:
+   ```bash
+   dotnet test --collect:"XPlat Code Coverage"
+   ```
 
-# 対話モードでコンテナ実行（結果を直接確認）
-docker run -it --rm microsoftgraphcsharpe
+4. **特定のテストファイルのみ実行**:
+   ```bash
+   dotnet test --filter "FullyQualifiedName~GraphAuthServiceTests"
+   ```
+   または、特定のテストクラスのみ実行:
+   ```bash
+   dotnet test --filter "FullyQualifiedName~TeamsServiceTests"
+   ```
 
-# バックグラウンドでコンテナ実行（ログを確認）
-docker run -d --name msgraph-app microsoftgraphcsharpe
-docker logs -f msgraph-app
+#### 継続的インテグレーション
 
-# 全てのテストを実行（モックデータを使用）
-docker build -t msgraph-test --target build .
-docker run --rm msgraph-test dotnet test
-```
+このプロジェクトは、ブランチへの変更やプルリクエストごとに自動テストを実行する準備が整っています：
 
-Dockerコンテナ内では`appsettings.Development.json`の設定が使用され、`DOTNET_ENVIRONMENT=Development`環境変数により開発環境用の設定が適用されます。`UseLocalMockData=true`によりモックデータが使用されます。
+1. **ローカル環境テスト**: .NET 8.0の標準環境でテストを実行  
+2. **Docker環境テスト**: Dockerコンテナ内でテストを実行  
 
-## トラブルシューティング
-
-### よくある問題と解決方法
-
-#### 1. アプリケーション実行時のエラー
-
-**問題:** `dotnet run` 実行時に「Azure AD アプリケーション登録の詳細情報が見つからない」エラーが発生する
-
-**解決方法:**
-```bash
-# 開発環境として実行する（モックデータを使用）
-USE_MOCK_DATA=true DOTNET_ENVIRONMENT=Development dotnet run --project src/MicrosoftGraphCSharpe.ConsoleApp
-
-# または、設定ファイルでモックデータを有効にして実行
-DOTNET_ENVIRONMENT=Development dotnet run --project src/MicrosoftGraphCSharpe.ConsoleApp
-```
-
-**原因:** 環境変数が設定されていない場合、アプリケーションは本番環境として動作し、実際のAzure AD設定を要求します。
-
-#### 2. セキュリティ関連のエラー
-
-**問題:** Azure.Identity関連のセキュリティ警告やCVE-2024-35255エラー
-
-**解決方法:** Azure.Identityパッケージを1.14.0に更新済みです。以下で確認可能：
-```bash
-dotnet list package | grep Azure.Identity
-# Azure.Identity 1.14.0 が表示されることを確認
-```
-
-#### 3. .NET バージョンの問題
-
-**問題:** .NET 9.0関連のエラーや互換性問題
-
-**解決方法:** このプロジェクトは.NET 8.0で動作するよう設定されています：
-```bash
-dotnet --version
-# 8.0.404 が表示されることを確認
-```
-
-#### 4. Device Code Flow認証の問題
-
-**問題:** メッセージ送信時の認証に失敗する
-
-**解決方法:** Azure ADアプリの設定を確認：
-1. Azure Portal > Azure Active Directory > App registrations
-2. 対象アプリを選択
-3. **認証** > **詳細設定** > **パブリック クライアント フローを許可する** を **はい** に設定
-4. **API のアクセス許可** で委任されたアクセス許可が正しく設定されていることを確認
-
-#### 5. APIエンドポイントエラー
-
-**問題:** Teams一覧取得時に「Forbidden」や「Unauthorized」エラー
-
-**解決方法:** このプロジェクトではApplication認証用に `/teams` エンドポイントを使用するよう修正済みです。
-- ❌ 旧: `/me/joinedTeams`（Delegated認証のみ）
-- ✅ 新: `/teams`（Application認証対応）
-
-### 環境別の動作
-
-- **Development環境** (`DOTNET_ENVIRONMENT=Development`): 
-  - 設定ファイルまたは環境変数に基づいて動作
-  - `appsettings.Development.json` の設定を使用
-  - デバッグ情報の詳細出力
-- **Production環境** (デフォルト): 
-  - 実際のMicrosoft Graph API使用
-  - Azure AD設定必須
-  - 本番レベルのログ出力
-
-### 環境変数による制御
-
-| 環境変数 | 値 | 動作 | Azure AD設定 |
-|---------|---|------|-------------|
-| `USE_MOCK_DATA=true` | true | モックデータを使用 | 不要 |
-| `USE_MOCK_DATA=false` | false | 実際のMicrosoft Graph APIを使用 | 必要 |
-| 環境変数なし | - | 設定ファイルの `UseLocalMockData` 値に従う | 設定による |
-
-## プロジェクトの改善履歴
-
-### 🔧 セキュリティ強化
-- Azure.Identity パッケージを1.11.0から1.14.0に更新（CVE-2024-35255対応）
-- 非推奨のテストメソッド修正（`ExpectedException` → `Assert.ThrowsException`）
-
-### 🎯 API互換性向上
-- Teams一覧取得のAPIエンドポイントを修正
-  - 変更前: `/me/joinedTeams`（Delegated認証のみ）
-  - 変更後: `/teams`（Application認証対応）
-
-### 🔄 開発ワークフロー改善
-- 環境変数による動作制御機能を追加
-- モックデータと実際のAPIの簡単な切り替え
-- 設定ファイルよりも環境変数を優先する制御ロジック
-
-### ✅ 安定性向上
-- .NET 8.0での動作を保証（.NET 9.0の問題を回避）
-- 全7件のテストが成功することを確認
-- 実際のMicrosoft Teamsとの動作確認済み
-
-## 注意事項
-
-### セキュリティ
-- プロダクション環境で使用する場合は、クライアントシークレットなどの機密情報の管理方法を適切に見直してください
-- Azure Key VaultやAzure App Configurationなどのセキュアな設定管理サービスの使用を推奨します
-- APIアクセス権限は必要最小限にするよう設計してください
-
-### パフォーマンス
-- 大量のTeamsやチャンネルを扱う場合は、ページネーション機能の実装を検討してください
-- API呼び出し頻度にはMicrosoft Graphのスロットリング制限があります
-
-### 開発
-- このプロジェクトは.NET 8.0で動作するよう最適化されています
-- 新しい機能追加時は、テストケースの追加も併せて行ってください
-- モックデータは `appsettings.json` の `SampleData` セクションで管理されています
-
-## 参考資料
-
-- [Microsoft Graph API ドキュメント](https://docs.microsoft.com/ja-jp/graph/)
-- [Azure Active Directory アプリ登録ガイド](https://docs.microsoft.com/ja-jp/azure/active-directory/develop/quickstart-register-app)
-- [.NET 8.0 ドキュメント](https://docs.microsoft.com/ja-jp/dotnet/core/whats-new/dotnet-8)
+これにより、異なる環境でのアプリケーションの動作を検証できます。
